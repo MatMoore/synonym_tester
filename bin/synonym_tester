@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby
+
+PROJECT_ROOT = File.dirname(__FILE__) + "/../"
+DATA_DIR = PROJECT_ROOT + "data/"
+LIBRARY_PATH = PROJECT_ROOT + "lib/"
+
+[PROJECT_ROOT, LIBRARY_PATH].each do |path|
+  $LOAD_PATH.unshift(path) unless $LOAD_PATH.include?(path)
+end
+
+require "synonym_tester"
+require 'elasticsearch'
+
+es_client = Elasticsearch::Client.new(
+    hosts: ENV['ELASTICSEARCH_HOSTS'] || 'http://localhost:9200',
+    transport_options: { headers: { "Content-Type" => "application/json" } }
+  )
+
+SynonymTester.new(es_client).run(
+  queries: %w(hello world),
+  doc_ids: %w(1 2 3),
+  search_synonyms: ["foo => bar"],
+  index_synonyms: ["foo => bar"]
+)
