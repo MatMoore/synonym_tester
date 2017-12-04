@@ -16,9 +16,11 @@ es_client = Elasticsearch::Client.new(
     transport_options: { headers: { "Content-Type" => "application/json" } }
   )
 
+doc_ids = File.readlines(DATA_DIR + "doc_ids.txt").map(&:strip)
+
 SynonymTester.new(es_client).run(
   queries: %w(hello world),
-  doc_ids: %w(1 2 3),
+  doc_ids: doc_ids,
   search_synonyms: ["foo => bar"],
   index_synonyms: ["foo => bar"]
 )
