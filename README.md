@@ -7,18 +7,11 @@ This is currently a proof of concept.
 
 It requires access to an elasticsearch cluster containing GOV.UK search indexes.
 
-# Usage
+# Example usage
 
-`./bin/synonym_tester`
+Each argument is a [synonym rule](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html#_solr_synonyms) to swap into either of the synonym filters (identified by the part before the colon).
 
-## Completed
-- Create a test index with customised analysis settings
-
-## Unfinished
-- Define a useful mapping
-- Specify synonym rules to test in isolation
-- Run test searches
-- Report search results
+`./bin/synonym_tester 'search: 1, one' 'both: license => licence', 'index: car => car, vehicle'`
 
 ### Dependencies
 

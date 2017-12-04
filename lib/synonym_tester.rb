@@ -1,5 +1,6 @@
 require 'pp'
 require 'pry-byebug'
+require 'rainbow'
 
 class SynonymTester
   INDEX_FILTER = "index_synonym"
@@ -7,6 +8,9 @@ class SynonymTester
   INDEX_ANALYZER = "with_index_synonyms"
   SEARCH_ANALYZER = "with_search_synonyms"
   TEST_INDEX_NAME = "test_index"
+
+  ANSI_GREEN = "\e[32m".freeze
+  ANSI_RESET = "\e[0m".freeze
 
   def initialize(es_client, source_index_pattern: "govuk,mainstream,government,detailed", source_index_fields: %w(title description indexable_content))
     @client = es_client
@@ -26,15 +30,88 @@ class SynonymTester
 private
 
   def search(query)
-    []
+    payload = {
+      size: 10,
+      query: {
+        bool: {
+          should: [
+            {
+              match_phrase: {
+                "title" => {
+                  query: query
+                }
+              }
+            },
+            {
+              match_phrase: {
+                "description" => {
+                  query: query
+                }
+              }
+            },
+            {
+              match_phrase: {
+                "indexable_content" => {
+                  query: query
+                }
+              }
+            },
+            {
+              multi_match: {
+                query: query,
+                operator:"and",
+                fields: ["title", "description", "indexable_content"],
+              }
+            },
+            {
+              multi_match: {
+                query: query,
+                operator:"or",
+                fields:["title", "description", "indexable_content"]
+              }
+            },
+            {
+              multi_match: {
+                query: query,
+                operator:"or",
+                fields:["title", "description", "indexable_content"],
+                minimum_should_match: "2<2 3<3 7<50%"
+              }
+            },
+          ]
+        }
+      },
+      highlight: {
+        "fields" => { "title" => {}, "description" => {} },
+        "pre_tags" => [ANSI_GREEN],
+        "post_tags" => [ANSI_RESET]
+      }
+    }
+
+    client.search(index: TEST_INDEX_NAME, body: payload)
   end
 
   def report(query, results)
-    puts query
-    puts results
+    puts Rainbow(query).yellow
+    hits = results["hits"]["hits"]
+    if hits.empty?
+      puts Rainbow("No results found").red
+    else
+      hits.each do |hit|
+        title = hit.dig("highlight", "title") || hit.dig("_source", "title")
+        description = hit.dig("highlight", "description") || hit.dig("_source", "description")
+        puts title
+        puts description if description
+        puts ""
+      end
+    end
   end
 
   def create_index(index_synonyms, search_synonyms)
+    # Hack around empty synonym list case
+    index_synonyms << "xyzzy => konami"
+    search_synonyms << "xyzzy => konami"
+
     begin
       client.indices.delete(index: TEST_INDEX_NAME)
     rescue Elasticsearch::Transport::Transport::Errors::NotFound
@@ -71,6 +148,7 @@ private
       payload = {
         "source": {
           "index" => source_index,
+          "_source": source_index_fields,
           "query" => {
             "bool" => {
               "filter" => {
@@ -80,7 +158,8 @@ private
           }
         },
         "dest": {
-          "index" => TEST_INDEX_NAME
+          "index" => TEST_INDEX_NAME,
+          "type": "test_type"
         }
       }
 

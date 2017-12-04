@@ -10,6 +10,37 @@ end
 
 require "synonym_tester"
 require 'elasticsearch'
+require 'optparse'
+
+queries = []
+OptionParser.new do |parser|
+  parser.on("-q", "--query QUERY",
+            "Search query") do |query|
+    queries << query
+  end
+end.parse!
+
+if queries.empty?
+  queries = ["expired driving licence", "self assessment", "universal credit claim"]
+end
+
+index_synonyms = []
+search_synonyms = []
+
+ARGV.each do |rule|
+  type, synonym_rule = rule.split(':')
+  case type.downcase
+  when 'both'
+    index_synonyms << synonym_rule
+    search_synonyms << synonym_rule
+  when 'index'
+    index_synonyms << synonym_rule
+  when /^(search|query)$/
+    search_synonyms << synonym_rule
+  else
+    raise ValueError(rule)
+  end
+end
 
 es_client = Elasticsearch::Client.new(
     hosts: ENV['ELASTICSEARCH_HOSTS'] || 'http://localhost:9200',
@@ -19,8 +50,8 @@ es_client = Elasticsearch::Client.new(
 doc_ids = File.readlines(DATA_DIR + "doc_ids.txt").map(&:strip)
 
 SynonymTester.new(es_client).run(
-  queries: %w(hello world),
+  queries: queries,
   doc_ids: doc_ids,
-  search_synonyms: ["foo => bar"],
-  index_synonyms: ["foo => bar"]
+  search_synonyms: search_synonyms,
+  index_synonyms: index_synonyms
 )
