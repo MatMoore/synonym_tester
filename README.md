@@ -22,7 +22,7 @@ It requires access to an elasticsearch cluster containing GOV.UK search indexes.
 
 ### Dependencies
 
-- [https://github.com/elastic/elasticsearch-ruby](Elasticsearch ruby)
+- [Elasticsearch ruby](https://github.com/elastic/elasticsearch-ruby)
 
 ## Licence
 
